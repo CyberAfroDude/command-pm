@@ -1,0 +1,25 @@
+.sidebar-nav-item:hover,
+.sidebar-nav-item.is-active {
+  color: #e8e8e8 !important;
+  background: #161616 !important;
+}
+
+.sidebar-project-item {
+  cursor: pointer;
+}
+
+.sidebar-project-item:hover {
+  background: #161616 !important;
+}
+
+.sidebar-project-item:hover .sidebar-project-name {
+  color: #e8e8e8 !important;
+}
+
+.sidebar-add-project {
+  cursor: pointer;
+}
+
+.sidebar-add-project:hover {
+  color: #999999 !important;
+}

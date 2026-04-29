@@ -7,7 +7,7 @@ export function Layout() {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '220px 1fr',
+        gridTemplateColumns: '210px 1fr',
         minHeight: '100vh',
       }}
     >
