@@ -8,9 +8,14 @@ export function useProjects(): { projects: Project[]; loading: boolean } {
 
   useEffect(() => {
     let isMounted = true
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
+    const client = supabase
 
     const fetchProjects = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('projects')
         .select('*')
         .order('priority', { ascending: true })
@@ -30,7 +35,7 @@ export function useProjects(): { projects: Project[]; loading: boolean } {
 
     void fetchProjects()
 
-    const channel = supabase
+    const channel = client
       .channel('projects-realtime')
       .on(
         'postgres_changes',
@@ -43,7 +48,7 @@ export function useProjects(): { projects: Project[]; loading: boolean } {
 
     return () => {
       isMounted = false
-      void supabase.removeChannel(channel)
+      void client.removeChannel(channel)
     }
   }, [])
 

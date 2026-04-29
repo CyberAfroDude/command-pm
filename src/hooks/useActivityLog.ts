@@ -10,9 +10,14 @@ export function useActivityLog(
 
   useEffect(() => {
     let isMounted = true
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
+    const client = supabase
 
     const fetchLog = async () => {
-      let query = supabase
+      let query = client
         .from('activity_log')
         .select('*')
         .order('created_at', { ascending: false })
@@ -39,7 +44,7 @@ export function useActivityLog(
 
     void fetchLog()
 
-    const channel = supabase
+    const channel = client
       .channel(`activity-log-realtime-${project_id ?? 'all'}`)
       .on(
         'postgres_changes',
@@ -52,7 +57,7 @@ export function useActivityLog(
 
     return () => {
       isMounted = false
-      void supabase.removeChannel(channel)
+      void client.removeChannel(channel)
     }
   }, [project_id])
 

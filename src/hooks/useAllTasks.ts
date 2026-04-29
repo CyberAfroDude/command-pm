@@ -8,9 +8,14 @@ export function useAllTasks(): { tasks: Task[]; loading: boolean } {
 
   useEffect(() => {
     let isMounted = true
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
+    const client = supabase
 
     const fetchTasks = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('tasks')
         .select('*')
         .is('parent_id', null)
@@ -33,7 +38,7 @@ export function useAllTasks(): { tasks: Task[]; loading: boolean } {
 
     void fetchTasks()
 
-    const channel = supabase
+    const channel = client
       .channel('tasks-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
         void fetchTasks()
@@ -42,7 +47,7 @@ export function useAllTasks(): { tasks: Task[]; loading: boolean } {
 
     return () => {
       isMounted = false
-      void supabase.removeChannel(channel)
+      void client.removeChannel(channel)
     }
   }, [])
 
