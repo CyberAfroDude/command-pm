@@ -25,8 +25,8 @@ const PROJECT_TASK_COUNTS: Record<string, number> = {
 function getGroupKey(category: Project['category']): ProjectGroupKey | null {
   const value = category?.trim().toLowerCase()
   if (value === 'film') return 'film'
-  if (value === 'apps') return 'apps'
-  if (value === 'platforms') return 'platforms'
+  if (value === 'app' || value === 'apps') return 'apps'
+  if (value === 'platform' || value === 'platforms') return 'platforms'
   return null
 }
 

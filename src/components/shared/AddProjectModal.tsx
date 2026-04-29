@@ -6,6 +6,7 @@ export function AddProjectModal() {
   const { isProjectModalOpen, closeProjectModal, addProject } = useProjectModal()
   const [name, setName] = useState('')
   const [category, setCategory] = useState('App')
+  const [company, setCompany] = useState('')
   const [phase, setPhase] = useState('')
   const [priority, setPriority] = useState(3)
   const [notes, setNotes] = useState('')
@@ -81,6 +82,7 @@ export function AddProjectModal() {
             ))}
           </div>
           <input value={phase} onChange={(event) => setPhase(event.target.value)} placeholder="Current phase e.g. Development" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 10px', color: 'var(--text)' }} />
+          <input value={company} onChange={(event) => setCompany(event.target.value)} placeholder="Company e.g. DoA Pictures" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 10px', color: 'var(--text)' }} />
           <div style={{ display: 'flex', gap: '8px' }}>
             {[1, 2, 3, 4, 5].map((num) => (
               <button
@@ -116,6 +118,7 @@ export function AddProjectModal() {
               addProject({
                 name: name.trim(),
                 category,
+                company: company.trim() || 'Independent',
                 phase: phase.trim() || 'Development',
                 priority,
                 notes,
@@ -123,6 +126,7 @@ export function AddProjectModal() {
               setToastMessage(`Project added: ${name.trim()}`)
               closeProjectModal()
               setName('')
+              setCompany('')
               setPhase('')
               setNotes('')
             }}

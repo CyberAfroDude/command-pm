@@ -264,7 +264,7 @@ export function Dashboard() {
               <article
                 key={project.id}
                 className="dashboard-project-card"
-                onClick={() => navigate(`/project/${project.id}`)}
+                onClick={() => navigate(`/project/${encodeURIComponent(project.name)}`)}
                 style={{
                   background: '#111111',
                   border: isBlocked ? '1px solid rgba(239,68,68,0.2)' : '1px solid #222222',

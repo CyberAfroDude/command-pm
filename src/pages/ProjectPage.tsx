@@ -1,49 +1,32 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useTaskModal } from '../context/TaskModalContext'
 import { Toast } from '../components/shared/Toast'
 import { BackButton } from '../components/shared/BackButton'
+import { useProjectModal } from '../context/ProjectModalContext'
 
-const projectMeta: Record<string, { category: string; company: string; status: string; phases: string[]; current: string }> = {
+const projectMeta: Record<string, { phases: string[]; current: string }> = {
   StatFlow: {
-    category: 'Apps',
-    company: 'Beehiv Labs',
-    status: 'active',
     phases: ['Discovery', 'Build', 'App Store Review', 'Launch', 'Post-Launch'],
     current: 'App Store Review',
   },
   CryptoDraftPicks: {
-    category: 'Platforms',
-    company: 'Draft Labs',
-    status: 'blocked',
     phases: ['Concept', 'Design', 'Development', 'Beta', 'Launch'],
     current: 'Development',
   },
   'Dead or Alive': {
-    category: 'Film',
-    company: 'DoA Pictures',
-    status: 'review',
     phases: ['Pre-Production', 'Production', 'Post-Production', 'Festival', 'Distribution'],
     current: 'Post-Production',
   },
   CrewSheetz: {
-    category: 'Apps',
-    company: 'Crew Ops',
-    status: 'active',
     phases: ['Concept', 'MVP Build', 'Beta', 'Launch', 'Growth'],
     current: 'MVP Build',
   },
   'Christian App Empire': {
-    category: 'Apps',
-    company: 'CAE',
-    status: 'active',
     phases: ['Active Portfolio', 'Optimization', 'Expansion', 'Scale'],
     current: 'Active Portfolio',
   },
   'To Fame From Love': {
-    category: 'Film',
-    company: 'Love Frame',
-    status: 'review',
     phases: ['Development', 'Pre-Production', 'Production', 'Post', 'Distribution'],
     current: 'Development',
   },
@@ -56,13 +39,25 @@ function normalizeProjectName(routeName?: string): string {
 }
 
 export function ProjectPage() {
+  const navigate = useNavigate()
   const { name } = useParams()
   const projectName = decodeURIComponent(name || '')
   const [activeTab, setActiveTab] = useState('Open')
   const normalizedName = normalizeProjectName(projectName)
   const meta = projectMeta[normalizedName]
+  const { projects, updateProject } = useProjectModal()
+  const project = projects.find((item) => item.name === normalizedName)
   const { tasks, updateTask, deleteTask, openTaskModal } = useTaskModal()
   const projectTasks = tasks.filter((task) => task.projectName === normalizedName)
+  const [isEditingProject, setIsEditingProject] = useState(false)
+  const [projectDraft, setProjectDraft] = useState({
+    name: project?.name ?? normalizedName,
+    category: project?.category ?? 'App',
+    company: project?.company ?? 'Independent',
+    phase: project?.phase ?? meta.current,
+    priority: project?.priority ?? 3,
+    notes: project?.notes ?? '',
+  })
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState<{ title: string; priority: 'urgent' | 'high' | 'normal' | 'low'; bucket: 'now' | 'after_phase' | 'checklist' | 'someday' } | null>(null)
   const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null)
@@ -83,6 +78,17 @@ export function ProjectPage() {
     }
   }, [toastMessage])
 
+  useEffect(() => {
+    setProjectDraft({
+      name: project?.name ?? normalizedName,
+      category: project?.category ?? 'App',
+      company: project?.company ?? 'Independent',
+      phase: project?.phase ?? meta.current,
+      priority: project?.priority ?? 3,
+      notes: project?.notes ?? '',
+    })
+  }, [meta.current, normalizedName, project])
+
   return (
     <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--bg)' }}>
       <BackButton />
@@ -99,34 +105,101 @@ export function ProjectPage() {
               textTransform: 'uppercase',
             }}
           >
-            {meta.category} · {meta.company}
+            {project?.category ?? 'App'} · {project?.company ?? 'Independent'}
           </div>
         </div>
-        <span
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '10px',
+              padding: '2px 6px',
+              borderRadius: '2px',
+              textTransform: 'uppercase',
+              background:
+                project?.status === 'active'
+                  ? 'rgba(34,197,94,0.08)'
+                  : project?.status === 'blocked'
+                    ? 'rgba(239,68,68,0.08)'
+                    : 'rgba(245,158,11,0.08)',
+              color: project?.status === 'active' ? '#22c55e' : project?.status === 'blocked' ? '#ef4444' : '#f59e0b',
+              border:
+                project?.status === 'active'
+                  ? '1px solid rgba(34,197,94,0.3)'
+                  : project?.status === 'blocked'
+                    ? '1px solid rgba(239,68,68,0.2)'
+                    : '1px solid rgba(245,158,11,0.2)',
+            }}
+          >
+            {project?.status ?? 'review'}
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsEditingProject((prev) => !prev)}
+            style={{
+              border: '1px solid var(--border2)',
+              background: 'var(--surface2)',
+              color: 'var(--muted)',
+              borderRadius: '4px',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '11px',
+              padding: '4px 8px',
+              cursor: 'pointer',
+            }}
+          >
+            {isEditingProject ? 'Close Edit' : 'Edit Project'}
+          </button>
+        </div>
+      </div>
+      {isEditingProject ? (
+        <div
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '10px',
-            padding: '2px 6px',
-            borderRadius: '2px',
-            textTransform: 'uppercase',
-            background:
-              meta.status === 'active'
-                ? 'rgba(34,197,94,0.08)'
-                : meta.status === 'blocked'
-                  ? 'rgba(239,68,68,0.08)'
-                  : 'rgba(245,158,11,0.08)',
-            color: meta.status === 'active' ? '#22c55e' : meta.status === 'blocked' ? '#ef4444' : '#f59e0b',
-            border:
-              meta.status === 'active'
-                ? '1px solid rgba(34,197,94,0.3)'
-                : meta.status === 'blocked'
-                  ? '1px solid rgba(239,68,68,0.2)'
-                  : '1px solid rgba(245,158,11,0.2)',
+            display: 'grid',
+            gap: '10px',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '6px',
+            padding: '12px',
           }}
         >
-          {meta.status}
-        </span>
-      </div>
+          <input value={projectDraft.name} onChange={(event) => setProjectDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="Project title" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 10px', color: 'var(--text)' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <select value={projectDraft.category} onChange={(event) => setProjectDraft((prev) => ({ ...prev, category: event.target.value }))} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 10px', color: 'var(--text)' }}>
+              <option>App</option>
+              <option>Film</option>
+              <option>Platform</option>
+              <option>Service</option>
+            </select>
+            <input value={projectDraft.company} onChange={(event) => setProjectDraft((prev) => ({ ...prev, company: event.target.value }))} placeholder="Company" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 10px', color: 'var(--text)' }} />
+          </div>
+          <input value={projectDraft.phase} onChange={(event) => setProjectDraft((prev) => ({ ...prev, phase: event.target.value }))} placeholder="Current phase" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 10px', color: 'var(--text)' }} />
+          <input type="number" min={1} max={5} value={projectDraft.priority} onChange={(event) => setProjectDraft((prev) => ({ ...prev, priority: Number(event.target.value) || 1 }))} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 10px', color: 'var(--text)' }} />
+          <textarea rows={3} value={projectDraft.notes} onChange={(event) => setProjectDraft((prev) => ({ ...prev, notes: event.target.value }))} placeholder="Notes" style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '4px', padding: '8px 10px', color: 'var(--text)', resize: 'vertical' }} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!project) return
+                updateProject(project.id, {
+                  name: projectDraft.name.trim() || project.name,
+                  category: projectDraft.category,
+                  company: projectDraft.company.trim() || 'Independent',
+                  phase: projectDraft.phase.trim() || project.phase,
+                  priority: projectDraft.priority,
+                  notes: projectDraft.notes,
+                })
+                setIsEditingProject(false)
+                setToastMessage('Project updated')
+                const nextName = encodeURIComponent(projectDraft.name.trim() || project.name)
+                navigate(`/project/${nextName}`)
+              }}
+              style={{ border: 'none', background: '#22c55e', color: '#000', borderRadius: '4px', padding: '6px 12px', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Save Project
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div
         style={{
