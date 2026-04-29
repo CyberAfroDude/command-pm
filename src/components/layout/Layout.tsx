@@ -1,15 +1,18 @@
 import { Outlet } from 'react-router-dom'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
+import { useTheme } from '../../context/ThemeContext'
 
 export default function Layout() {
+  const { theme } = useTheme()
   return (
     <div
+      className={`app-root ${theme}`}
       style={{
         display: 'flex',
         height: '100vh',
         overflow: 'hidden',
-        background: '#0a0a0a',
+        background: 'var(--bg)',
       }}
     >
       <Sidebar />

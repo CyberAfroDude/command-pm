@@ -58,21 +58,21 @@ export function Sidebar() {
     <aside
       style={{
         width: '210px',
-        background: '#111111',
-        borderRight: '1px solid #222222',
+        background: 'var(--surface)',
+        borderRight: '1px solid var(--border)',
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      <div style={{ padding: '16px 14px 12px', borderBottom: '1px solid #222222' }}>
+      <div style={{ padding: '16px 14px 12px', borderBottom: '1px solid var(--border)' }}>
         <div
           style={{
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '10px',
+            fontSize: '13px',
             fontWeight: 600,
             letterSpacing: '0.22em',
-            color: '#e8e8e8',
+            color: 'var(--text)',
             textTransform: 'uppercase',
           }}
         >
@@ -82,15 +82,15 @@ export function Sidebar() {
           style={{
             marginTop: '4px',
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '8px',
-            color: '#333333',
+            fontSize: '10px',
+            color: 'var(--faint)',
           }}
         >
           PM · v2.0
         </div>
       </div>
 
-      <nav style={{ padding: '10px 0', borderBottom: '1px solid #222222' }}>
+      <nav style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
         {[
           { to: '/', label: 'Dashboard' },
           { to: '/tasks', label: 'My Tasks', badge: 14 },
@@ -106,9 +106,9 @@ export function Sidebar() {
               alignItems: 'center',
               gap: '8px',
               padding: '6px 14px',
-              fontSize: '12.5px',
-              color: isActive ? '#e8e8e8' : '#999999',
-              background: isActive ? '#161616' : 'transparent',
+              fontSize: '16px',
+              color: isActive ? 'var(--text)' : 'var(--muted)',
+              background: isActive ? 'var(--surface2)' : 'transparent',
               textDecoration: 'none',
             })}
           >
@@ -118,8 +118,8 @@ export function Sidebar() {
                 style={{
                   marginLeft: 'auto',
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '9px',
-                  color: '#333333',
+                  fontSize: '11px',
+                  color: 'var(--faint)',
                 }}
               >
                 {item.badge}
@@ -140,8 +140,8 @@ export function Sidebar() {
               <div
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '8px',
-                  color: '#333333',
+                  fontSize: '10px',
+                  color: 'var(--faint)',
                   padding: '10px 14px 4px',
                   textTransform: 'uppercase',
                   letterSpacing: '0.15em',
@@ -179,7 +179,7 @@ export function Sidebar() {
                     className="sidebar-project-name"
                     style={{
                       fontSize: '12px',
-                      color: '#999999',
+                      color: 'var(--muted)',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -191,8 +191,8 @@ export function Sidebar() {
                   <span
                     style={{
                       fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: '9px',
-                      color: '#333333',
+                      fontSize: '11px',
+                      color: 'var(--faint)',
                       flexShrink: 0,
                     }}
                   >
@@ -209,10 +209,10 @@ export function Sidebar() {
         className="sidebar-add-project"
         style={{
           padding: '10px 14px',
-          borderTop: '1px solid #222222',
+          borderTop: '1px solid var(--border)',
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '9px',
-          color: '#333333',
+          fontSize: '11px',
+          color: 'var(--faint)',
         }}
       >
         + add project

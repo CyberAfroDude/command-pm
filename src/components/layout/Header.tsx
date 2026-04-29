@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom'
 import './Header.css'
+import { useTheme } from '../../context/ThemeContext'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -24,6 +25,7 @@ function getTodayLabel(): string {
 
 export function Header() {
   const { pathname } = useLocation()
+  const { theme, toggleTheme } = useTheme()
   const title = getPageTitle(pathname)
   const dateLabel = getTodayLabel()
 
@@ -32,8 +34,8 @@ export function Header() {
       style={{
         width: '100%',
         height: '48px',
-        background: '#0a0a0a',
-        borderBottom: '1px solid #222222',
+        background: 'var(--bg)',
+        borderBottom: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -41,7 +43,7 @@ export function Header() {
         boxSizing: 'border-box',
       }}
     >
-      <div style={{ fontSize: '13px', fontWeight: 500, color: '#e8e8e8' }}>{title}</div>
+      <div style={{ fontSize: '16px', fontWeight: 500, color: 'var(--text)' }}>{title}</div>
 
       <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -49,8 +51,8 @@ export function Header() {
           <span
             style={{
               fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '9px',
-              color: '#555555',
+              fontSize: '11px',
+              color: 'var(--subtle)',
               letterSpacing: '0.06em',
             }}
           >
@@ -61,8 +63,8 @@ export function Header() {
         <span
           style={{
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '9px',
-            color: '#555555',
+            fontSize: '11px',
+            color: 'var(--subtle)',
           }}
         >
           {dateLabel}
@@ -70,12 +72,29 @@ export function Header() {
 
         <button
           type="button"
+          onClick={toggleTheme}
           style={{
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '9px',
-            color: '#555555',
-            background: '#161616',
-            border: '1px solid #2e2e2e',
+            fontSize: '11px',
+            color: 'var(--subtle)',
+            background: 'var(--surface2)',
+            border: '1px solid var(--border2)',
+            borderRadius: '3px',
+            padding: '2px 7px',
+            cursor: 'pointer',
+          }}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+
+        <button
+          type="button"
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '11px',
+            color: 'var(--subtle)',
+            background: 'var(--surface2)',
+            border: '1px solid var(--border2)',
             borderRadius: '3px',
             padding: '2px 7px',
             cursor: 'pointer',

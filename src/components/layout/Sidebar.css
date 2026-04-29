@@ -1,7 +1,7 @@
 .sidebar-nav-item:hover,
 .sidebar-nav-item.is-active {
-  color: #e8e8e8 !important;
-  background: #161616 !important;
+  color: var(--text) !important;
+  background: var(--surface2) !important;
 }
 
 .sidebar-project-item {
@@ -9,11 +9,11 @@
 }
 
 .sidebar-project-item:hover {
-  background: #161616 !important;
+  background: var(--surface2) !important;
 }
 
 .sidebar-project-item:hover .sidebar-project-name {
-  color: #e8e8e8 !important;
+  color: var(--text) !important;
 }
 
 .sidebar-add-project {
@@ -21,5 +21,5 @@
 }
 
 .sidebar-add-project:hover {
-  color: #999999 !important;
+  color: var(--muted) !important;
 }

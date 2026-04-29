@@ -1,0 +1,35 @@
+.shared-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: transform 220ms ease, opacity 220ms ease;
+  pointer-events: none;
+  z-index: 300;
+}
+
+.shared-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.shared-toast-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.shared-toast-text {
+  font-size: 15px;
+  color: var(--text);
+}

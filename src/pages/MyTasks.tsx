@@ -3,155 +3,30 @@ import type { CSSProperties } from 'react'
 import { useAllTasks } from '../hooks/useAllTasks'
 import { useProjects } from '../hooks/useProjects'
 import type { Project, Task } from '../lib/types'
+import { PROJECT_TASKS } from '../lib/mockData'
+import { Toast } from '../components/shared/Toast'
 import './MyTasks.css'
-
-type Priority = 'urgent' | 'high' | 'normal' | 'low'
-type Source = 'AGENT' | 'CURSOR' | 'SLACK'
-
-interface TaskRow {
-  id: string
-  title: string
-  priority: Priority
-  bucket: string
-  due: string
-  overdue?: boolean
-  source: Source
-}
 
 interface TaskGroup {
   id: string
   name: string
-  tasks: TaskRow[]
+  tasks: typeof PROJECT_TASKS.StatFlow
 }
 
 const baseGroups: TaskGroup[] = [
-  {
-    id: 'statflow',
-    name: 'StatFlow',
-    tasks: [
-      {
-        id: 'sf-1',
-        title: 'Prepare App Store launch checklist',
-        priority: 'urgent',
-        bucket: 'NOW',
-        due: 'Apr 28',
-        overdue: true,
-        source: 'AGENT',
-      },
-      {
-        id: 'sf-2',
-        title: 'Enable push notifications for v1.1',
-        priority: 'high',
-        bucket: 'CHECKLIST',
-        due: '—',
-        source: 'CURSOR',
-      },
-      {
-        id: 'sf-3',
-        title: 'Set up AdMob mediation',
-        priority: 'normal',
-        bucket: 'CHECKLIST',
-        due: '—',
-        source: 'CURSOR',
-      },
-      {
-        id: 'sf-4',
-        title: 'Verify app-ads.txt is live',
-        priority: 'normal',
-        bucket: 'CHECKLIST',
-        due: '—',
-        source: 'AGENT',
-      },
-      {
-        id: 'sf-5',
-        title: 'Write launch announcement for Beehiiv',
-        priority: 'low',
-        bucket: 'SOMEDAY',
-        due: '—',
-        source: 'SLACK',
-      },
-    ],
-  },
-  {
-    id: 'cryptodraftpicks',
-    name: 'CryptoDraftPicks',
-    tasks: [
-      {
-        id: 'cdp-1',
-        title: 'Decide: Solana config for token launch',
-        priority: 'urgent',
-        bucket: 'NOW',
-        due: 'Today',
-        overdue: true,
-        source: 'AGENT',
-      },
-      {
-        id: 'cdp-2',
-        title: 'Finalize rake percentage model',
-        priority: 'high',
-        bucket: 'NOW',
-        due: '—',
-        source: 'SLACK',
-      },
-      {
-        id: 'cdp-3',
-        title: 'Review Bunny agent system prompt v2',
-        priority: 'normal',
-        bucket: 'AFTER PHASE',
-        due: '—',
-        source: 'CURSOR',
-      },
-    ],
-  },
-  {
-    id: 'dead-or-alive',
-    name: 'Dead or Alive',
-    tasks: [
-      {
-        id: 'doa-1',
-        title: 'Send audio direction notes to Fred Brown II',
-        priority: 'urgent',
-        bucket: 'NOW',
-        due: 'Today',
-        overdue: true,
-        source: 'AGENT',
-      },
-      {
-        id: 'doa-2',
-        title: 'Review Wayne Yu color grade pass',
-        priority: 'high',
-        bucket: 'NOW',
-        due: '—',
-        source: 'SLACK',
-      },
-      {
-        id: 'doa-3',
-        title: 'Confirm Eric Fernandez edit timeline',
-        priority: 'normal',
-        bucket: 'CHECKLIST',
-        due: '—',
-        source: 'AGENT',
-      },
-      {
-        id: 'doa-4',
-        title: 'Update Roger Margulies on post schedule',
-        priority: 'normal',
-        bucket: 'CHECKLIST',
-        due: '—',
-        source: 'SLACK',
-      },
-    ],
-  },
+  { id: 'statflow', name: 'StatFlow', tasks: PROJECT_TASKS.StatFlow },
+  { id: 'cryptodraftpicks', name: 'CryptoDraftPicks', tasks: PROJECT_TASKS.CryptoDraftPicks },
+  { id: 'dead-or-alive', name: 'Dead or Alive', tasks: PROJECT_TASKS['Dead or Alive'] },
 ]
 
-function priorityColor(priority: Priority): string {
+function priorityColor(priority: 'urgent' | 'high' | 'normal' | 'low'): string {
   if (priority === 'urgent') return '#ef4444'
   if (priority === 'high') return '#f59e0b'
   if (priority === 'normal') return '#3b82f6'
   return '#333333'
 }
 
-function sourceStyle(source: Source): CSSProperties {
+function sourceStyle(source: 'AGENT' | 'CURSOR' | 'SLACK'): CSSProperties {
   if (source === 'AGENT') return { background: 'rgba(34,197,94,0.08)', color: '#22c55e' }
   if (source === 'CURSOR') return { background: 'rgba(59,130,246,0.08)', color: '#3b82f6' }
   return { background: 'rgba(245,158,11,0.08)', color: '#f59e0b' }
@@ -209,12 +84,12 @@ export function MyTasks() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: '#0a0a0a' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: 'var(--bg)' }}>
       <aside
         style={{
           width: '168px',
           minWidth: '168px',
-          borderRight: '1px solid #222222',
+          borderRight: '1px solid var(--border)',
           padding: '16px 0',
           overflowY: 'auto',
         }}
@@ -228,7 +103,7 @@ export function MyTasks() {
               className="mytasks-filter-option"
               onClick={() => setActiveView(option)}
               style={{
-                color: activeView === option ? '#e8e8e8' : option === 'Overdue' ? '#ef4444' : '#999999',
+                color: activeView === option ? 'var(--text)' : option === 'Overdue' ? '#ef4444' : 'var(--muted)',
               }}
             >
               {option}
@@ -249,7 +124,7 @@ export function MyTasks() {
               type="button"
               className="mytasks-filter-option"
               onClick={() => setActivePriority(option.label)}
-              style={{ color: activePriority === option.label ? '#e8e8e8' : '#999999' }}
+              style={{ color: activePriority === option.label ? 'var(--text)' : 'var(--muted)' }}
             >
               <span
                 style={{
@@ -274,7 +149,7 @@ export function MyTasks() {
               type="button"
               className="mytasks-filter-option"
               onClick={() => setActiveProject(option)}
-              style={{ color: activeProject === option ? '#e8e8e8' : '#999999' }}
+              style={{ color: activeProject === option ? 'var(--text)' : 'var(--muted)' }}
             >
               {option}
             </button>
@@ -289,7 +164,7 @@ export function MyTasks() {
               type="button"
               className="mytasks-filter-option"
               onClick={() => setActiveBucket(option)}
-              style={{ color: activeBucket === option ? '#e8e8e8' : '#999999' }}
+              style={{ color: activeBucket === option ? 'var(--text)' : 'var(--muted)' }}
             >
               {option}
             </button>
@@ -302,8 +177,8 @@ export function MyTasks() {
           <span
             style={{
               fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '9px',
-              color: '#555555',
+              fontSize: '11px',
+              color: 'var(--subtle)',
               textTransform: 'uppercase',
             }}
           >
@@ -335,23 +210,23 @@ export function MyTasks() {
                   textAlign: 'left',
                 }}
               >
-                <span style={{ fontSize: '9px', color: '#333333' }}>{isOpen ? '▼' : '▶'}</span>
+                <span style={{ fontSize: '11px', color: 'var(--faint)' }}>{isOpen ? '▼' : '▶'}</span>
                 <span
                   style={{
                     fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '9px',
+                    fontSize: '11px',
                     letterSpacing: '0.12em',
-                    color: '#555555',
+                    color: 'var(--subtle)',
                     textTransform: 'uppercase',
                     fontWeight: 600,
                   }}
                 >
                   {group.name}
                 </span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '8px', color: '#333333' }}>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>
                   {visibleTasks.length}
                 </span>
-                <span style={{ flex: 1, height: '1px', background: '#222222' }} />
+                <span style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
               </button>
 
               {isOpen ? (
@@ -381,15 +256,15 @@ export function MyTasks() {
                           flexShrink: 0,
                         }}
                       />
-                      <span style={{ fontSize: '12.5px', color: '#e8e8e8', flex: 1 }}>{task.title}</span>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '8px', color: '#333333' }}>
+                      <span style={{ fontSize: '16px', color: 'var(--text)', flex: 1 }}>{task.title}</span>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>
                         {task.bucket}
                       </span>
                       <span
                         style={{
                           fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '9px',
-                          color: task.overdue ? '#ef4444' : '#333333',
+                          fontSize: '11px',
+                          color: task.overdue ? '#ef4444' : 'var(--faint)',
                         }}
                       >
                         {task.due}
@@ -397,7 +272,7 @@ export function MyTasks() {
                       <span
                         style={{
                           fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '7px',
+                          fontSize: '10px',
                           borderRadius: '2px',
                           padding: '1px 4px',
                           ...sourceStyle(task.source),
@@ -453,8 +328,8 @@ export function MyTasks() {
           onClick={() => showToast('Completed tasks — coming in full build')}
           style={{
             fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '8px',
-            color: '#333333',
+            fontSize: '10px',
+            color: 'var(--faint)',
             padding: '10px 4px',
             cursor: 'pointer',
             background: 'transparent',
@@ -466,20 +341,7 @@ export function MyTasks() {
         </button>
       </main>
 
-      {toastMessage ? (
-        <div className={`mytasks-toast${toastVisible ? ' is-visible' : ''}`}>
-          <span
-            style={{
-              width: '5px',
-              height: '5px',
-              borderRadius: '999px',
-              background: '#22c55e',
-              flexShrink: 0,
-            }}
-          />
-          <span style={{ fontSize: '12px', color: '#e8e8e8' }}>{toastMessage}</span>
-        </div>
-      ) : null}
+      {toastMessage ? <Toast message={toastMessage} visible={toastVisible} /> : null}
     </div>
   )
 }
