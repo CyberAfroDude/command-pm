@@ -39,6 +39,8 @@ interface TaskModalContextValue {
   closeTaskModal: () => void
   tasks: AppTask[]
   addTask: (task: Omit<AppTask, 'id' | 'status' | 'createdAt' | 'assignedTo'>) => void
+  updateTask: (taskId: string, updates: Partial<Pick<AppTask, 'title' | 'priority' | 'bucket' | 'dueDate'>>) => void
+  deleteTask: (taskId: string) => void
 }
 
 const TaskModalContext = createContext<TaskModalContextValue | null>(null)
@@ -64,6 +66,9 @@ export function TaskModalProvider({ children }: { children: ReactNode }) {
           },
           ...prev,
         ]),
+      updateTask: (taskId, updates) =>
+        setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, ...updates } : task))),
+      deleteTask: (taskId) => setTasks((prev) => prev.filter((task) => task.id !== taskId)),
     }),
     [isTaskModalOpen, tasks],
   )

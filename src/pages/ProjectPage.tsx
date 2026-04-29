@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTaskModal } from '../context/TaskModalContext'
+import { Toast } from '../components/shared/Toast'
+import { BackButton } from '../components/shared/BackButton'
 
 const projectMeta: Record<string, { category: string; company: string; status: string; phases: string[]; current: string }> = {
   StatFlow: {
@@ -59,13 +61,31 @@ export function ProjectPage() {
   const [activeTab, setActiveTab] = useState('Open')
   const normalizedName = normalizeProjectName(projectName)
   const meta = projectMeta[normalizedName]
-  const { tasks } = useTaskModal()
+  const { tasks, updateTask, deleteTask, openTaskModal } = useTaskModal()
   const projectTasks = tasks.filter((task) => task.projectName === normalizedName)
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<{ title: string; priority: 'urgent' | 'high' | 'normal' | 'low'; bucket: 'now' | 'after_phase' | 'checklist' | 'someday' } | null>(null)
+  const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null)
+  const [deletingTaskIds, setDeletingTaskIds] = useState<Record<string, boolean>>({})
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toastVisible, setToastVisible] = useState(false)
 
   const currentIndex = useMemo(() => meta.phases.indexOf(meta.current), [meta.current, meta.phases])
 
+  useEffect(() => {
+    if (!toastMessage) return
+    setToastVisible(true)
+    const hide = window.setTimeout(() => setToastVisible(false), 2400)
+    const clear = window.setTimeout(() => setToastMessage(null), 2800)
+    return () => {
+      window.clearTimeout(hide)
+      window.clearTimeout(clear)
+    }
+  }, [toastMessage])
+
   return (
     <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--bg)' }}>
+      <BackButton />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--text)' }}>{normalizedName}</div>
@@ -168,7 +188,11 @@ export function ProjectPage() {
             ))}
           </div>
           {projectTasks.map((task) => (
-            <div key={task.id} className="dashboard-panel-task" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div
+              key={task.id}
+              className={`dashboard-panel-task task-row${deletingTaskIds[task.id] ? ' is-completing' : ''}`}
+              style={{ borderBottom: '1px solid var(--border)' }}
+            >
               <span
                 style={{
                   width: '15px',
@@ -186,8 +210,94 @@ export function ProjectPage() {
                   background: task.priority === 'urgent' ? '#ef4444' : task.priority === 'high' ? '#f59e0b' : task.priority === 'normal' ? '#3b82f6' : '#333333',
                 }}
               />
-              <span style={{ fontSize: '15px', color: 'var(--text)', flex: 1 }}>{task.title}</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>{task.bucket.replace('_', ' ').toUpperCase()}</span>
+              {editingTaskId === task.id && editDraft ? (
+                <>
+                  <input
+                    value={editDraft.title}
+                    onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, title: event.target.value } : prev))}
+                    style={{ flex: 1, border: 'none', borderBottom: '1px solid #3b82f6', background: 'transparent', color: 'var(--text)', fontSize: '16px', outline: 'none' }}
+                  />
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    {(['urgent', 'high', 'normal', 'low'] as const).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => setEditDraft((prev) => (prev ? { ...prev, priority: level } : prev))}
+                        style={{ width: '10px', height: '10px', borderRadius: '999px', border: editDraft.priority === level ? '1px solid #fff' : 'none', background: level === 'urgent' ? '#ef4444' : level === 'high' ? '#f59e0b' : level === 'normal' ? '#3b82f6' : '#333333', cursor: 'pointer' }}
+                      />
+                    ))}
+                  </div>
+                  <select
+                    value={editDraft.bucket}
+                    onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, bucket: event.target.value as typeof editDraft.bucket } : prev))}
+                    style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', background: 'var(--surface2)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: '3px' }}
+                  >
+                    <option value="now">NOW</option>
+                    <option value="after_phase">AFTER PHASE</option>
+                    <option value="checklist">CHECKLIST</option>
+                    <option value="someday">SOMEDAY</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateTask(task.id, {
+                        title: editDraft.title.trim() || 'Untitled task',
+                        priority: editDraft.priority,
+                        bucket: editDraft.bucket,
+                      })
+                      setEditingTaskId(null)
+                      setEditDraft(null)
+                      setToastMessage('Task updated')
+                    }}
+                    style={{ border: 'none', background: 'transparent', color: '#22c55e', fontSize: '11px', cursor: 'pointer' }}
+                  >
+                    ✓ Save
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTaskId(null)
+                      setEditDraft(null)
+                    }}
+                    style={{ border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '11px', cursor: 'pointer' }}
+                  >
+                    ✗ Cancel
+                  </button>
+                </>
+              ) : deleteConfirmTaskId === task.id ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                  <span style={{ fontSize: '14px', color: 'var(--muted)' }}>Delete this task?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeletingTaskIds((prev) => ({ ...prev, [task.id]: true }))
+                      window.setTimeout(() => {
+                        deleteTask(task.id)
+                        setDeletingTaskIds((prev) => ({ ...prev, [task.id]: false }))
+                        setDeleteConfirmTaskId(null)
+                        setToastMessage('Task deleted')
+                      }, 280)
+                    }}
+                    style={{ border: 'none', background: 'transparent', color: '#ef4444', fontSize: '11px', cursor: 'pointer' }}
+                  >
+                    Yes, delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmTaskId(null)}
+                    style={{ border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '11px', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <span style={{ fontSize: '15px', color: 'var(--text)', flex: 1 }}>{task.title}</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>
+                    {task.bucket.replace('_', ' ').toUpperCase()}
+                  </span>
+                </>
+              )}
               <span
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
@@ -200,10 +310,33 @@ export function ProjectPage() {
               >
                 {task.source.toUpperCase()}
               </span>
-              <span style={{ color: 'var(--faint)', fontSize: '14px' }}>···</span>
+              <div className="task-row-action-buttons">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteConfirmTaskId(null)
+                    setEditingTaskId(task.id)
+                    setEditDraft({ title: task.title, priority: task.priority, bucket: task.bucket })
+                  }}
+                  style={{ border: 'none', background: 'transparent', color: '#3b82f6', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', cursor: 'pointer' }}
+                >
+                  ✏️ Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingTaskId(null)
+                    setEditDraft(null)
+                    setDeleteConfirmTaskId(task.id)
+                  }}
+                  style={{ border: 'none', background: 'transparent', color: '#ef4444', fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', cursor: 'pointer' }}
+                >
+                  🗑 Del
+                </button>
+              </div>
             </div>
           ))}
-          <button type="button" style={{ marginTop: '8px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '14px', cursor: 'pointer' }}>
+          <button type="button" onClick={openTaskModal} style={{ marginTop: '8px', border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '14px', cursor: 'pointer' }}>
             + Add task
           </button>
         </div>
@@ -234,6 +367,7 @@ export function ProjectPage() {
           ))}
         </aside>
       </div>
+      {toastMessage ? <Toast message={toastMessage} visible={toastVisible} /> : null}
     </div>
   )
 }

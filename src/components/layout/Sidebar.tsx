@@ -158,12 +158,14 @@ export function Sidebar() {
             <section key={groupKey}>
               <div
                 style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '10px',
-                  color: 'var(--faint)',
-                  padding: '10px 14px 4px',
+                  fontFamily: "'Geist', sans-serif",
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: 'var(--text)',
+                  padding: '14px 14px 6px',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.15em',
+                  letterSpacing: '0.08em',
+                  borderTop: groupKey === 'film' ? 'none' : '1px solid var(--border)',
                 }}
               >
                 {meta.emoji} {meta.label}

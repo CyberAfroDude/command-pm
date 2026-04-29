@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Toast } from '../components/shared/Toast'
+import { BackButton } from '../components/shared/BackButton'
 
 interface HandoffRow {
   id: string
@@ -73,6 +74,7 @@ export function HandoffsPage() {
 
   return (
     <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--bg)' }}>
+      <BackButton />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <span
           style={{

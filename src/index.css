@@ -35,6 +35,22 @@ body {
   color: var(--text);
 }
 
+.back-button:hover {
+  color: var(--text) !important;
+}
+
+.task-row-action-buttons {
+  opacity: 0;
+  transition: opacity 140ms ease;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.task-row:hover .task-row-action-buttons {
+  opacity: 1;
+}
+
 .light {
   --bg: #ffffff;
   --surface: #f4f4f4;

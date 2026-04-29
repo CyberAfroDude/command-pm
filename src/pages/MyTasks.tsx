@@ -47,7 +47,7 @@ function sourceStyle(source: TaskSource): CSSProperties {
 }
 
 export function MyTasks() {
-  const { tasks, addTask, openTaskModal } = useTaskModal()
+  const { tasks, addTask, updateTask, deleteTask, openTaskModal } = useTaskModal()
   const { projects } = useProjectModal()
 
   const [activeView, setActiveView] = useState<'All Tasks' | 'Assigned to Me' | 'Agent Created' | 'Due Today' | 'Overdue'>('All Tasks')
@@ -64,6 +64,12 @@ export function MyTasks() {
   const [showCompleted, setShowCompleted] = useState(false)
   const [quickAddFor, setQuickAddFor] = useState<string | null>(null)
   const [quickAddText, setQuickAddText] = useState('')
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState<{ title: string; priority: TaskPriority; bucket: TaskBucket } | null>(
+    null,
+  )
+  const [deleteConfirmTaskId, setDeleteConfirmTaskId] = useState<string | null>(null)
+  const [deletingTaskIds, setDeletingTaskIds] = useState<Record<string, boolean>>({})
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [toastVisible, setToastVisible] = useState(false)
 
@@ -119,6 +125,35 @@ export function MyTasks() {
       setCompletedTasks((prev) => [{ ...task, completedAt: new Date().toLocaleTimeString() }, ...prev])
       setCompletingTaskIds((prev) => ({ ...prev, [task.id]: false }))
       showToast('Task completed ✓')
+    }, 280)
+  }
+
+  const startEdit = (task: TaskItem) => {
+    setDeleteConfirmTaskId(null)
+    setEditingTaskId(task.id)
+    setEditDraft({ title: task.title, priority: task.priority, bucket: task.bucket })
+  }
+
+  const saveEdit = (taskId: string) => {
+    if (!editDraft) return
+    updateTask(taskId, {
+      title: editDraft.title.trim() || 'Untitled task',
+      priority: editDraft.priority,
+      bucket: editDraft.bucket,
+    })
+    setEditingTaskId(null)
+    setEditDraft(null)
+    showToast('Task updated')
+  }
+
+  const removeTask = (taskId: string) => {
+    setDeletingTaskIds((prev) => ({ ...prev, [taskId]: true }))
+    window.setTimeout(() => {
+      deleteTask(taskId)
+      setCompletedTasks((prev) => prev.filter((task) => task.id !== taskId))
+      setDeletingTaskIds((prev) => ({ ...prev, [taskId]: false }))
+      setDeleteConfirmTaskId(null)
+      showToast('Task deleted')
     }, 280)
   }
 
@@ -315,7 +350,7 @@ export function MyTasks() {
                   {visibleTasks.map((task) => (
                     <div
                       key={task.id}
-                      className={`mytasks-row${completingTaskIds[task.id] ? ' is-completing' : ''}`}
+                      className={`mytasks-row task-row${completingTaskIds[task.id] || deletingTaskIds[task.id] ? ' is-completing' : ''}`}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -337,10 +372,103 @@ export function MyTasks() {
                           flexShrink: 0,
                         }}
                       />
-                      <span style={{ fontSize: '16px', color: 'var(--text)', flex: 1 }}>{task.title}</span>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>
-                        {BUCKET_LABEL[task.bucket]}
-                      </span>
+                      {editingTaskId === task.id && editDraft ? (
+                        <>
+                          <input
+                            value={editDraft.title}
+                            onChange={(event) => setEditDraft((prev) => (prev ? { ...prev, title: event.target.value } : prev))}
+                            style={{
+                              flex: 1,
+                              background: 'transparent',
+                              border: 'none',
+                              borderBottom: '1px solid #3b82f6',
+                              color: 'var(--text)',
+                              fontSize: '16px',
+                              outline: 'none',
+                            }}
+                          />
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            {(['urgent', 'high', 'normal', 'low'] as TaskPriority[]).map((level) => (
+                              <button
+                                key={level}
+                                type="button"
+                                onClick={() => setEditDraft((prev) => (prev ? { ...prev, priority: level } : prev))}
+                                style={{
+                                  width: '10px',
+                                  height: '10px',
+                                  borderRadius: '999px',
+                                  border: editDraft.priority === level ? '1px solid #fff' : 'none',
+                                  background: priorityColor(level),
+                                  cursor: 'pointer',
+                                }}
+                              />
+                            ))}
+                          </div>
+                          <select
+                            value={editDraft.bucket}
+                            onChange={(event) =>
+                              setEditDraft((prev) =>
+                                prev ? { ...prev, bucket: event.target.value as TaskBucket } : prev,
+                              )
+                            }
+                            style={{
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontSize: '10px',
+                              background: 'var(--surface2)',
+                              color: 'var(--text)',
+                              border: '1px solid var(--border)',
+                              borderRadius: '3px',
+                            }}
+                          >
+                            <option value="now">NOW</option>
+                            <option value="after_phase">AFTER PHASE</option>
+                            <option value="checklist">CHECKLIST</option>
+                            <option value="someday">SOMEDAY</option>
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => saveEdit(task.id)}
+                            style={{ border: 'none', background: 'transparent', color: '#22c55e', fontSize: '11px', cursor: 'pointer' }}
+                          >
+                            ✓ Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingTaskId(null)
+                              setEditDraft(null)
+                            }}
+                            style={{ border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '11px', cursor: 'pointer' }}
+                          >
+                            ✗ Cancel
+                          </button>
+                        </>
+                      ) : deleteConfirmTaskId === task.id ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                          <span style={{ fontSize: '14px', color: 'var(--muted)' }}>Delete this task?</span>
+                          <button
+                            type="button"
+                            onClick={() => removeTask(task.id)}
+                            style={{ border: 'none', background: 'transparent', color: '#ef4444', fontSize: '11px', cursor: 'pointer' }}
+                          >
+                            Yes, delete
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmTaskId(null)}
+                            style={{ border: 'none', background: 'transparent', color: 'var(--muted)', fontSize: '11px', cursor: 'pointer' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <span style={{ fontSize: '16px', color: 'var(--text)', flex: 1 }}>{task.title}</span>
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>
+                            {BUCKET_LABEL[task.bucket]}
+                          </span>
+                        </>
+                      )}
                       <span
                         style={{
                           fontFamily: "'JetBrains Mono', monospace",
@@ -361,7 +489,40 @@ export function MyTasks() {
                       >
                         {task.source.toUpperCase()}
                       </span>
-                      <span className="mytasks-row-menu">···</span>
+                      <div className="task-row-action-buttons">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(task)}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            color: '#3b82f6',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingTaskId(null)
+                            setEditDraft(null)
+                            setDeleteConfirmTaskId(task.id)
+                          }}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            color: '#ef4444',
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          🗑 Del
+                        </button>
+                      </div>
                     </div>
                   ))}
 
