@@ -1,6 +1,8 @@
 import { useLocation } from 'react-router-dom'
 import './Header.css'
 import { useTheme } from '../../context/ThemeContext'
+import { useCommandBar } from '../../context/CommandBarContext'
+import { useTaskModal } from '../../context/TaskModalContext'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -26,6 +28,8 @@ function getTodayLabel(): string {
 export function Header() {
   const { pathname } = useLocation()
   const { theme, toggleTheme } = useTheme()
+  const { openCommandBar } = useCommandBar()
+  const { openTaskModal } = useTaskModal()
   const title = getPageTitle(pathname)
   const dateLabel = getTodayLabel()
 
@@ -89,6 +93,24 @@ export function Header() {
 
         <button
           type="button"
+          onClick={openTaskModal}
+          style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '11px',
+            color: 'var(--subtle)',
+            background: 'var(--surface2)',
+            border: '1px solid var(--border2)',
+            borderRadius: '3px',
+            padding: '2px 7px',
+            cursor: 'pointer',
+          }}
+        >
+          + Task
+        </button>
+
+        <button
+          type="button"
+          onClick={openCommandBar}
           style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: '11px',

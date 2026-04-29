@@ -1,64 +1,103 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { useAllTasks } from '../hooks/useAllTasks'
-import { useProjects } from '../hooks/useProjects'
-import type { Project, Task } from '../lib/types'
-import { PROJECT_TASKS } from '../lib/mockData'
 import { Toast } from '../components/shared/Toast'
+import { useTaskModal } from '../context/TaskModalContext'
+import { useProjectModal } from '../context/ProjectModalContext'
 import './MyTasks.css'
 
-interface TaskGroup {
+type TaskPriority = 'urgent' | 'high' | 'normal' | 'low'
+type TaskBucket = 'now' | 'after_phase' | 'checklist' | 'someday'
+type TaskSource = 'agent' | 'cursor' | 'slack' | 'manual'
+
+interface TaskItem {
   id: string
-  name: string
-  tasks: typeof PROJECT_TASKS.StatFlow
+  projectName: string
+  title: string
+  priority: TaskPriority
+  bucket: TaskBucket
+  dueDate: string | null
+  source: TaskSource
+  assignedTo: 'Spence'
+  status: 'open'
+  createdAt: string
 }
 
-const baseGroups: TaskGroup[] = [
-  { id: 'statflow', name: 'StatFlow', tasks: PROJECT_TASKS.StatFlow },
-  { id: 'cryptodraftpicks', name: 'CryptoDraftPicks', tasks: PROJECT_TASKS.CryptoDraftPicks },
-  { id: 'dead-or-alive', name: 'Dead or Alive', tasks: PROJECT_TASKS['Dead or Alive'] },
-]
+interface CompletedTask extends TaskItem {
+  completedAt: string
+}
 
-function priorityColor(priority: 'urgent' | 'high' | 'normal' | 'low'): string {
+const BUCKET_LABEL: Record<TaskBucket, string> = {
+  now: 'NOW',
+  after_phase: 'AFTER PHASE',
+  checklist: 'CHECKLIST',
+  someday: 'SOMEDAY',
+}
+
+function priorityColor(priority: TaskPriority): string {
   if (priority === 'urgent') return '#ef4444'
   if (priority === 'high') return '#f59e0b'
   if (priority === 'normal') return '#3b82f6'
   return '#333333'
 }
 
-function sourceStyle(source: 'AGENT' | 'CURSOR' | 'SLACK'): CSSProperties {
-  if (source === 'AGENT') return { background: 'rgba(34,197,94,0.08)', color: '#22c55e' }
-  if (source === 'CURSOR') return { background: 'rgba(59,130,246,0.08)', color: '#3b82f6' }
+function sourceStyle(source: TaskSource): CSSProperties {
+  if (source === 'agent') return { background: 'rgba(34,197,94,0.08)', color: '#22c55e' }
+  if (source === 'cursor') return { background: 'rgba(59,130,246,0.08)', color: '#3b82f6' }
   return { background: 'rgba(245,158,11,0.08)', color: '#f59e0b' }
 }
 
 export function MyTasks() {
-  const { tasks } = useAllTasks()
-  const { projects } = useProjects()
-  const typedTasks: Task[] = tasks
+  const { tasks, addTask, openTaskModal } = useTaskModal()
+  const { projects } = useProjectModal()
 
-  const [activeView, setActiveView] = useState('All Tasks')
-  const [activePriority, setActivePriority] = useState('All')
-  const [activeProject, setActiveProject] = useState('All Projects')
-  const [activeBucket, setActiveBucket] = useState('Now')
+  const [activeView, setActiveView] = useState<'All Tasks' | 'Assigned to Me' | 'Agent Created' | 'Due Today' | 'Overdue'>('All Tasks')
+  const [activePriority, setActivePriority] = useState<TaskPriority | null>(null)
+  const [activeProject, setActiveProject] = useState<string | null>(null)
+  const [activeBucket, setActiveBucket] = useState<TaskBucket | null>(null)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    statflow: true,
-    cryptodraftpicks: true,
-    'dead-or-alive': true,
+    StatFlow: true,
+    CryptoDraftPicks: true,
+    'Dead or Alive': true,
   })
   const [completingTaskIds, setCompletingTaskIds] = useState<Record<string, boolean>>({})
-  const [hiddenTaskIds, setHiddenTaskIds] = useState<Record<string, boolean>>({})
+  const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([])
+  const [showCompleted, setShowCompleted] = useState(false)
   const [quickAddFor, setQuickAddFor] = useState<string | null>(null)
   const [quickAddText, setQuickAddText] = useState('')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [toastVisible, setToastVisible] = useState(false)
 
-  const openCount = useMemo(() => {
-    return baseGroups.flatMap((group) => group.tasks).filter((task) => !hiddenTaskIds[task.id]).length
-  }, [hiddenTaskIds])
+  const openTasks = useMemo(
+    () => tasks.filter((task) => !completedTasks.some((completed) => completed.id === task.id)),
+    [completedTasks, tasks],
+  )
 
-  const projectNames = useMemo(() => projects.map((project: Project) => project.name), [projects])
-  const hasLiveTasks = typedTasks.length > 0
+  const today = new Date().toISOString().slice(0, 10)
+
+  const filteredTasks = useMemo(() => {
+    let next = openTasks
+    if (activeView === 'Assigned to Me') next = next.filter((task) => task.assignedTo === 'Spence')
+    if (activeView === 'Agent Created') next = next.filter((task) => task.source === 'agent')
+    if (activeView === 'Due Today') next = next.filter((task) => task.dueDate === today)
+    if (activeView === 'Overdue') next = next.filter((task) => !!task.dueDate && task.dueDate < today)
+    if (activePriority) next = next.filter((task) => task.priority === activePriority)
+    if (activeProject) next = next.filter((task) => task.projectName === activeProject)
+    if (activeBucket) next = next.filter((task) => task.bucket === activeBucket)
+    return next
+  }, [activeBucket, activePriority, activeProject, activeView, openTasks, today])
+
+  const openCount = filteredTasks.length
+  const hasLiveTasks = tasks.length > 0
+
+  const groupedTasks = useMemo(() => {
+    const map = new Map<string, TaskItem[]>()
+    for (const task of filteredTasks) {
+      const list = map.get(task.projectName) ?? []
+      list.push(task)
+      map.set(task.projectName, list)
+    }
+    return [...map.entries()].map(([name, groupTasks]) => ({ id: name, name, tasks: groupTasks }))
+  }, [filteredTasks])
 
   useEffect(() => {
     if (!toastMessage) return
@@ -73,12 +112,12 @@ export function MyTasks() {
 
   const showToast = (message: string) => setToastMessage(message)
 
-  const completeTask = (taskId: string) => {
-    if (completingTaskIds[taskId] || hiddenTaskIds[taskId]) return
-    setCompletingTaskIds((prev) => ({ ...prev, [taskId]: true }))
+  const completeTask = (task: TaskItem) => {
+    if (completingTaskIds[task.id] || completedTasks.some((item) => item.id === task.id)) return
+    setCompletingTaskIds((prev) => ({ ...prev, [task.id]: true }))
     window.setTimeout(() => {
-      setHiddenTaskIds((prev) => ({ ...prev, [taskId]: true }))
-      setCompletingTaskIds((prev) => ({ ...prev, [taskId]: false }))
+      setCompletedTasks((prev) => [{ ...task, completedAt: new Date().toLocaleTimeString() }, ...prev])
+      setCompletingTaskIds((prev) => ({ ...prev, [task.id]: false }))
       showToast('Task completed ✓')
     }, 280)
   }
@@ -101,9 +140,14 @@ export function MyTasks() {
               key={option}
               type="button"
               className="mytasks-filter-option"
-              onClick={() => setActiveView(option)}
+              onClick={() =>
+                setActiveView((prev) =>
+                  prev === option ? 'All Tasks' : (option as 'All Tasks' | 'Assigned to Me' | 'Agent Created' | 'Due Today' | 'Overdue'),
+                )
+              }
               style={{
-                color: activeView === option ? 'var(--text)' : option === 'Overdue' ? '#ef4444' : 'var(--muted)',
+                color: activeView === option ? '#e8e8e8' : option === 'Overdue' ? '#ef4444' : 'var(--muted)',
+                borderLeft: activeView === option ? '2px solid #22c55e' : '2px solid transparent',
               }}
             >
               {option}
@@ -123,8 +167,11 @@ export function MyTasks() {
               key={option.label}
               type="button"
               className="mytasks-filter-option"
-              onClick={() => setActivePriority(option.label)}
-              style={{ color: activePriority === option.label ? 'var(--text)' : 'var(--muted)' }}
+              onClick={() => setActivePriority((prev) => (prev === option.label.toLowerCase() ? null : (option.label.toLowerCase() as TaskPriority)))}
+              style={{
+                color: activePriority === option.label.toLowerCase() ? '#e8e8e8' : 'var(--muted)',
+                borderLeft: activePriority === option.label.toLowerCase() ? '2px solid #22c55e' : '2px solid transparent',
+              }}
             >
               <span
                 style={{
@@ -143,13 +190,16 @@ export function MyTasks() {
 
         <div style={{ marginBottom: '12px' }}>
           <div className="mytasks-filter-label">Project</div>
-          {['All Projects', ...projectNames].map((option) => (
+          {['All Projects', ...projects.map((project) => project.name)].map((option) => (
             <button
               key={option}
               type="button"
               className="mytasks-filter-option"
-              onClick={() => setActiveProject(option)}
-              style={{ color: activeProject === option ? 'var(--text)' : 'var(--muted)' }}
+              onClick={() => setActiveProject((prev) => (prev === option || option === 'All Projects' ? null : option))}
+              style={{
+                color: (activeProject ?? 'All Projects') === option ? '#e8e8e8' : 'var(--muted)',
+                borderLeft: (activeProject ?? 'All Projects') === option ? '2px solid #22c55e' : '2px solid transparent',
+              }}
             >
               {option}
             </button>
@@ -163,8 +213,25 @@ export function MyTasks() {
               key={option}
               type="button"
               className="mytasks-filter-option"
-              onClick={() => setActiveBucket(option)}
-              style={{ color: activeBucket === option ? 'var(--text)' : 'var(--muted)' }}
+              onClick={() =>
+                setActiveBucket((prev) => {
+                  const value =
+                    option === 'Now' ? 'now' : option === 'After Phase' ? 'after_phase' : option === 'Checklist' ? 'checklist' : 'someday'
+                  return prev === value ? null : value
+                })
+              }
+              style={{
+                color:
+                  activeBucket ===
+                  (option === 'Now' ? 'now' : option === 'After Phase' ? 'after_phase' : option === 'Checklist' ? 'checklist' : 'someday')
+                    ? '#e8e8e8'
+                    : 'var(--muted)',
+                borderLeft:
+                  activeBucket ===
+                  (option === 'Now' ? 'now' : option === 'After Phase' ? 'after_phase' : option === 'Checklist' ? 'checklist' : 'someday')
+                    ? '2px solid #22c55e'
+                    : '2px solid transparent',
+              }}
             >
               {option}
             </button>
@@ -184,14 +251,28 @@ export function MyTasks() {
           >
             MY TASKS · {openCount} open{hasLiveTasks ? ' · live' : ''}
           </span>
-          <button type="button" className="mytasks-add-button">
+          <button type="button" className="mytasks-add-button" onClick={openTaskModal}>
             + Add Task
           </button>
         </div>
 
-        {baseGroups.map((group) => {
+        {groupedTasks.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '28px 0',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '15px',
+              color: 'var(--faint)',
+            }}
+          >
+            No tasks match this filter
+          </div>
+        ) : null}
+
+        {groupedTasks.map((group) => {
           const isOpen = openGroups[group.id] ?? true
-          const visibleTasks = group.tasks.filter((task) => !hiddenTaskIds[task.id])
+          const visibleTasks = group.tasks
 
           return (
             <section key={group.id} style={{ marginBottom: '10px' }}>
@@ -244,7 +325,7 @@ export function MyTasks() {
                         cursor: 'pointer',
                       }}
                     >
-                      <button type="button" className="mytasks-checkbox" onClick={() => completeTask(task.id)}>
+                      <button type="button" className="mytasks-checkbox" onClick={() => completeTask(task)}>
                         ✓
                       </button>
                       <span
@@ -258,16 +339,16 @@ export function MyTasks() {
                       />
                       <span style={{ fontSize: '16px', color: 'var(--text)', flex: 1 }}>{task.title}</span>
                       <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>
-                        {task.bucket}
+                        {BUCKET_LABEL[task.bucket]}
                       </span>
                       <span
                         style={{
                           fontFamily: "'JetBrains Mono', monospace",
                           fontSize: '11px',
-                          color: task.overdue ? '#ef4444' : 'var(--faint)',
+                          color: task.dueDate && task.dueDate < today ? '#ef4444' : 'var(--faint)',
                         }}
                       >
-                        {task.due}
+                        {task.dueDate ? task.dueDate : '—'}
                       </span>
                       <span
                         style={{
@@ -278,7 +359,7 @@ export function MyTasks() {
                           ...sourceStyle(task.source),
                         }}
                       >
-                        {task.source}
+                        {task.source.toUpperCase()}
                       </span>
                       <span className="mytasks-row-menu">···</span>
                     </div>
@@ -295,7 +376,15 @@ export function MyTasks() {
                           if (event.key === 'Enter') {
                             setQuickAddFor(null)
                             setQuickAddText('')
-                            showToast('Task added')
+                            addTask({
+                              projectName: group.name,
+                              title: quickAddText.trim(),
+                              priority: 'normal',
+                              bucket: 'now',
+                              dueDate: null,
+                              source: 'manual',
+                            })
+                            showToast(`Task added to ${group.name}`)
                           } else if (event.key === 'Escape') {
                             setQuickAddFor(null)
                             setQuickAddText('')
@@ -325,7 +414,7 @@ export function MyTasks() {
 
         <button
           type="button"
-          onClick={() => showToast('Completed tasks — coming in full build')}
+          onClick={() => setShowCompleted((prev) => !prev)}
           style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: '10px',
@@ -337,8 +426,30 @@ export function MyTasks() {
           }}
           className="mytasks-completed-toggle"
         >
-          ▶ Completed this week (12)
+          {showCompleted ? '▼ Hide completed' : '▶ Show completed'} ({completedTasks.length})
         </button>
+        {showCompleted ? (
+          <div style={{ marginTop: '8px', borderTop: '1px solid var(--border)' }}>
+            {completedTasks.map((task) => (
+              <div key={task.id} className="mytasks-row" style={{ padding: '8px 4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '999px', background: `${priorityColor(task.priority)}66` }} />
+                <span style={{ fontSize: '15px', color: 'var(--muted)', textDecoration: 'line-through', flex: 1 }}>{task.title}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: 'var(--faint)' }}>{task.completedAt}</span>
+                <button
+                  type="button"
+                  className="mytasks-row-menu"
+                  style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
+                  onClick={() => {
+                    setCompletedTasks((prev) => prev.filter((item) => item.id !== task.id))
+                    showToast('Task restored')
+                  }}
+                >
+                  ↩
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </main>
 
       {toastMessage ? <Toast message={toastMessage} visible={toastVisible} /> : null}

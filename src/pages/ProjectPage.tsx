@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { PROJECT_TASKS } from '../lib/mockData'
+import { useTaskModal } from '../context/TaskModalContext'
 
 const projectMeta: Record<string, { category: string; company: string; status: string; phases: string[]; current: string }> = {
   StatFlow: {
@@ -47,18 +47,20 @@ const projectMeta: Record<string, { category: string; company: string; status: s
   },
 }
 
-function normalizeProjectName(routeId?: string): string {
-  if (!routeId) return 'StatFlow'
-  const cleaned = decodeURIComponent(routeId).replace(/-/g, ' ').toLowerCase()
+function normalizeProjectName(routeName?: string): string {
+  if (!routeName) return 'StatFlow'
+  const cleaned = decodeURIComponent(routeName).toLowerCase()
   return Object.keys(projectMeta).find((name) => name.toLowerCase() === cleaned) ?? 'StatFlow'
 }
 
 export function ProjectPage() {
-  const { id } = useParams()
+  const { name } = useParams()
+  const projectName = decodeURIComponent(name || '')
   const [activeTab, setActiveTab] = useState('Open')
-  const name = normalizeProjectName(id)
-  const meta = projectMeta[name]
-  const tasks = PROJECT_TASKS[name] ?? []
+  const normalizedName = normalizeProjectName(projectName)
+  const meta = projectMeta[normalizedName]
+  const { tasks } = useTaskModal()
+  const projectTasks = tasks.filter((task) => task.projectName === normalizedName)
 
   const currentIndex = useMemo(() => meta.phases.indexOf(meta.current), [meta.current, meta.phases])
 
@@ -66,7 +68,7 @@ export function ProjectPage() {
     <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--bg)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--text)' }}>{name}</div>
+          <div style={{ fontSize: '22px', fontWeight: 500, color: 'var(--text)' }}>{normalizedName}</div>
           <div
             style={{
               marginTop: '4px',
@@ -165,7 +167,7 @@ export function ProjectPage() {
               </button>
             ))}
           </div>
-          {tasks.map((task) => (
+          {projectTasks.map((task) => (
             <div key={task.id} className="dashboard-panel-task" style={{ borderBottom: '1px solid var(--border)' }}>
               <span
                 style={{
@@ -181,22 +183,22 @@ export function ProjectPage() {
                   width: '7px',
                   height: '7px',
                   borderRadius: '999px',
-                  background: task.priority === 'urgent' ? '#ef4444' : task.priority === 'high' ? '#f59e0b' : '#3b82f6',
+                  background: task.priority === 'urgent' ? '#ef4444' : task.priority === 'high' ? '#f59e0b' : task.priority === 'normal' ? '#3b82f6' : '#333333',
                 }}
               />
               <span style={{ fontSize: '15px', color: 'var(--text)', flex: 1 }}>{task.title}</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>{task.bucket}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>{task.bucket.replace('_', ' ').toUpperCase()}</span>
               <span
                 style={{
                   fontFamily: "'JetBrains Mono', monospace",
                   fontSize: '10px',
                   borderRadius: '2px',
                   padding: '1px 4px',
-                  background: task.source === 'AGENT' ? 'rgba(34,197,94,0.08)' : task.source === 'CURSOR' ? 'rgba(59,130,246,0.08)' : 'rgba(245,158,11,0.08)',
-                  color: task.source === 'AGENT' ? '#22c55e' : task.source === 'CURSOR' ? '#3b82f6' : '#f59e0b',
+                  background: task.source === 'agent' ? 'rgba(34,197,94,0.08)' : task.source === 'cursor' ? 'rgba(59,130,246,0.08)' : 'rgba(245,158,11,0.08)',
+                  color: task.source === 'agent' ? '#22c55e' : task.source === 'cursor' ? '#3b82f6' : '#f59e0b',
                 }}
               >
-                {task.source}
+                {task.source.toUpperCase()}
               </span>
               <span style={{ color: 'var(--faint)', fontSize: '14px' }}>···</span>
             </div>
@@ -217,9 +219,9 @@ export function ProjectPage() {
           >
             ACTIVITY LOG
           </div>
-          {(name === 'StatFlow'
+          {(normalizedName === 'StatFlow'
             ? ['2:14pm Apr 26 — Agent logged 3 tasks from Cursor log', '1:47pm Apr 26 — Task completed: Submit to App Store']
-            : name === 'CryptoDraftPicks'
+            : normalizedName === 'CryptoDraftPicks'
               ? ['11:02am Apr 26 — Agent flagged: blocked on Solana config', '9:22am Apr 26 — Model update requested']
               : ['9:30am Apr 26 — Agent logged 2 handoff items', '8:40am Apr 26 — Audio notes follow-up sent']
           ).map((line) => (

@@ -5,7 +5,8 @@ import { useActivityLog } from '../hooks/useActivityLog'
 import { useAllTasks } from '../hooks/useAllTasks'
 import { useProjects } from '../hooks/useProjects'
 import type { ActivityLog, Project, Task } from '../lib/types'
-import { PROJECT_TASKS } from '../lib/mockData'
+import { useTaskModal } from '../context/TaskModalContext'
+import { useProjectModal } from '../context/ProjectModalContext'
 import './Dashboard.css'
 
 const projectMeta: Record<string, { tasks: number; ago: string }> = {
@@ -106,6 +107,8 @@ export function Dashboard() {
   const { projects } = useProjects()
   const { tasks } = useAllTasks()
   const { log, loading: logLoading } = useActivityLog()
+  const { tasks: appTasks } = useTaskModal()
+  const { projects: localProjects } = useProjectModal()
   const [panelProject, setPanelProject] = useState<string | null>(null)
   const [completingTaskIds, setCompletingTaskIds] = useState<Record<string, boolean>>({})
   const [doneTaskIds, setDoneTaskIds] = useState<Record<string, boolean>>({})
@@ -134,6 +137,23 @@ export function Dashboard() {
       setCompletingTaskIds((prev) => ({ ...prev, [taskId]: false }))
     }, 280)
   }
+
+  const displayProjects: Project[] =
+    localProjects.length > 0
+      ? localProjects.map((project) => ({
+          id: project.id,
+          name: project.name,
+          category: project.category,
+          status: project.status,
+          phase: project.phase,
+          priority: project.priority,
+          owner: null,
+          progress: project.progress,
+          notes: project.notes,
+          created_at: '',
+          updated_at: '',
+        }))
+      : projects
 
   return (
     <div
@@ -173,7 +193,7 @@ export function Dashboard() {
         </div>
 
         {focusRows.map((row, index) => {
-          const tasksForProject = PROJECT_TASKS[row.project]
+          const tasksForProject = appTasks.filter((task) => task.projectName === row.project)
           const doneCount = tasksForProject.filter((task) => doneTaskIds[task.id]).length
           return (
           <div
@@ -233,7 +253,7 @@ export function Dashboard() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
-          {projects.map((project: Project) => {
+          {displayProjects.map((project: Project) => {
             const meta = projectMeta[project.name]
             const taskCount = meta?.tasks ?? taskCountsByProject[project.id] ?? 0
             const age = meta?.ago ?? '1h ago'
@@ -454,11 +474,11 @@ export function Dashboard() {
                     padding: '2px 6px',
                     borderRadius: '2px',
                     ...statusBadgeStyle(
-                      projects.find((project) => project.name === panelProject)?.status ?? 'active',
+                      displayProjects.find((project) => project.name === panelProject)?.status ?? 'active',
                     ),
                   }}
                 >
-                  {projects.find((project) => project.name === panelProject)?.status ?? 'active'}
+                  {displayProjects.find((project) => project.name === panelProject)?.status ?? 'active'}
                 </span>
               </div>
               <button onClick={() => setPanelProject(null)} className="dashboard-close-btn" type="button">
@@ -478,7 +498,7 @@ export function Dashboard() {
             >
               TASKS FOR THIS PROJECT
             </div>
-            {(PROJECT_TASKS[panelProject] ?? []).map((task) =>
+            {appTasks.filter((task) => task.projectName === panelProject).map((task) =>
               doneTaskIds[task.id] ? null : (
                 <div
                   key={task.id}
@@ -497,7 +517,7 @@ export function Dashboard() {
                   />
                   <span style={{ fontSize: '15px', color: 'var(--text)', flex: 1 }}>{task.title}</span>
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: 'var(--faint)' }}>
-                    {task.bucket}
+                    {task.bucket.replace('_', ' ').toUpperCase()}
                   </span>
                 </div>
               ),

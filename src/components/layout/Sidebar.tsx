@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useProjects } from '../../hooks/useProjects'
 import type { Project } from '../../lib/types'
 import './Sidebar.css'
+import { useProjectModal } from '../../context/ProjectModalContext'
 
 type ProjectGroupKey = 'film' | 'apps' | 'platforms'
 
@@ -38,21 +39,39 @@ function getStatusColor(status: Project['status']): string {
 export function Sidebar() {
   const navigate = useNavigate()
   const { projects } = useProjects()
+  const { projects: localProjects, openProjectModal } = useProjectModal()
 
   const groupedProjects = useMemo(() => {
+    const mergedProjects =
+      localProjects.length > 0
+        ? localProjects.map((project) => ({
+            id: project.id,
+            name: project.name,
+            category: project.category,
+            status: project.status,
+            phase: project.phase,
+            priority: project.priority,
+            owner: null,
+            progress: project.progress,
+            notes: project.notes,
+            created_at: '',
+            updated_at: '',
+          }))
+        : projects
+
     const grouped: Record<ProjectGroupKey, Project[]> = {
       film: [],
       apps: [],
       platforms: [],
     }
 
-    for (const project of projects) {
+    for (const project of mergedProjects) {
       const key = getGroupKey(project.category)
       if (key) grouped[key].push(project)
     }
 
     return grouped
-  }, [projects])
+  }, [localProjects, projects])
 
   return (
     <aside
@@ -94,7 +113,7 @@ export function Sidebar() {
         {[
           { to: '/', label: 'Dashboard' },
           { to: '/tasks', label: 'My Tasks', badge: 14 },
-          { to: '/project', label: 'Projects' },
+          { to: '/project/StatFlow', label: 'Projects' },
           { to: '/handoffs', label: 'Handoffs', badge: 2 },
         ].map((item) => (
           <NavLink
@@ -153,7 +172,7 @@ export function Sidebar() {
                 <button
                   key={project.id}
                   type="button"
-                  onClick={() => navigate(`/project/${project.id}`)}
+                  onClick={() => navigate(`/project/${encodeURIComponent(project.name)}`)}
                   className="sidebar-project-item"
                   style={{
                     width: '100%',
@@ -207,6 +226,7 @@ export function Sidebar() {
 
       <div
         className="sidebar-add-project"
+        onClick={openProjectModal}
         style={{
           padding: '10px 14px',
           borderTop: '1px solid var(--border)',
