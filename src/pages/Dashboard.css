@@ -1,0 +1,8 @@
+.dashboard-hover-row:hover {
+  background: #161616 !important;
+}
+
+.dashboard-project-card:hover {
+  border-color: #2e2e2e !important;
+  background: #161616 !important;
+}

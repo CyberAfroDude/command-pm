@@ -1,0 +1,19 @@
+.header-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #22c55e;
+  animation: headerPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes headerPulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+  100% {
+    opacity: 1;
+  }
+}
