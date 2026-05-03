@@ -8,11 +8,31 @@ import { executeActions } from './parser.js'
 import * as supabase from './supabase.js'
 import { formatStatusReply, formatDailyDigest } from './slack.js'
 
+const requiredEnvVars = [
+  'SLACK_BOT_TOKEN',
+  'SLACK_APP_TOKEN',
+  'SLACK_SIGNING_SECRET',
+  'MOONSHOT_API_KEY',
+  'SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'SLACK_CHANNEL_ID',
+]
+
+const missingVars = requiredEnvVars.filter((v) => !process.env[v])
+if (missingVars.length > 0) {
+  console.error('[Command-PM ERROR] Missing environment variables:')
+  missingVars.forEach((v) => console.error('  ✗ ' + v))
+  console.error('Add these to your agent/.env file and restart.')
+  process.exit(1)
+}
+
+console.log('[Command-PM] Environment variables loaded ✓')
+
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   appToken: process.env.SLACK_APP_TOKEN,
   socketMode: true,
-  logLevel: LogLevel.WARN,
+  logLevel: LogLevel.WARN
 })
 
 app.message(async ({ message, say, client }) => {

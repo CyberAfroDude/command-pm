@@ -3,25 +3,29 @@ dotenv.config()
 
 import { createClient } from '@supabase/supabase-js'
 
-const url = process.env.SUPABASE_URL
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-if (!url || !serviceKey) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+let _client = null
+function client() {
+  if (!_client) {
+    const url = process.env.SUPABASE_URL
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url || !serviceKey) {
+      console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+    }
+    _client = createClient(url || '', serviceKey || '', {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  }
+  return _client
 }
 
-export const supabase = createClient(url || '', serviceKey || '', {
-  auth: { persistSession: false, autoRefreshToken: false },
-})
-
 async function getProjectIdByName(projectName) {
-  const { data, error } = await supabase.from('projects').select('id').eq('name', projectName).maybeSingle()
+  const { data, error } = await client().from('projects').select('id').eq('name', projectName).maybeSingle()
   if (error) throw error
   return data?.id ?? null
 }
 
 export async function getProjects() {
-  const { data, error } = await supabase.from('projects').select('*').order('priority', { ascending: true })
+  const { data, error } = await client().from('projects').select('*').order('priority', { ascending: true })
   if (error) throw error
   return data ?? []
 }
@@ -30,7 +34,7 @@ export async function getTasksByProject(projectName) {
   const projectId = await getProjectIdByName(projectName)
   if (!projectId) return []
 
-  const { data, error } = await supabase
+  const { data, error } = await client()
     .from('tasks')
     .select('*')
     .eq('project_id', projectId)
@@ -70,7 +74,7 @@ export async function createTask({
     snoozed_until: null,
   }
 
-  const { data, error } = await supabase.from('tasks').insert(insert).select('*').single()
+  const { data, error } = await client().from('tasks').insert(insert).select('*').single()
   if (error) throw error
   return data
 }
@@ -83,7 +87,7 @@ export async function updateTaskStatus(taskId, status) {
     patch.completed_at = now
   }
 
-  const { data, error } = await supabase.from('tasks').update(patch).eq('id', taskId).select('*').single()
+  const { data, error } = await client().from('tasks').update(patch).eq('id', taskId).select('*').single()
   if (error) throw error
   return data
 }
@@ -97,7 +101,7 @@ export async function updateProjectStatus(projectName, updates) {
   if (updates.notes !== undefined) allowed.notes = updates.notes
   allowed.updated_at = now
 
-  const { data, error } = await supabase.from('projects').update(allowed).eq('name', projectName).select('*').single()
+  const { data, error } = await client().from('projects').update(allowed).eq('name', projectName).select('*').single()
   if (error) throw error
   return data
 }
@@ -106,7 +110,7 @@ export async function createActivityLog({ projectName, entry, source = 'agent' }
   const projectId = await getProjectIdByName(projectName)
   if (!projectId) throw new Error(`Project not found for activity: ${projectName}`)
 
-  const { data, error } = await supabase
+  const { data, error } = await client()
     .from('activity_log')
     .insert({ project_id: projectId, entry, source })
     .select('*')
@@ -120,7 +124,7 @@ export async function createHandoff({ projectName, title, toPerson, notes }) {
   const projectId = await getProjectIdByName(projectName)
   if (!projectId) throw new Error(`Project not found for handoff: ${projectName}`)
 
-  const { data, error } = await supabase
+  const { data, error } = await client()
     .from('handoffs')
     .insert({
       project_id: projectId,
@@ -139,7 +143,7 @@ export async function createHandoff({ projectName, title, toPerson, notes }) {
 const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 }
 
 export async function getOpenTasksAllProjects() {
-  const { data, error } = await supabase.from('tasks').select('*, projects(name)').eq('status', 'open')
+  const { data, error } = await client().from('tasks').select('*, projects(name)').eq('status', 'open')
 
   if (error) throw error
 

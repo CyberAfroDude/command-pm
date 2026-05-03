@@ -1,17 +1,15 @@
 {
-  "name": "claw-pm-agent",
+  "name": "command-pm-agent",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
-  "description": "Command-PM Slack bot — Moonshot + Supabase (separate from React frontend)",
-  "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "dev": "node --watch index.js"
   },
   "dependencies": {
-    "@slack/bolt": "^4.2.0",
-    "@supabase/supabase-js": "^2.49.1",
-    "dotenv": "^16.4.7",
-    "node-cron": "^3.0.3"
+    "@slack/bolt": "latest",
+    "@supabase/supabase-js": "latest",
+    "dotenv": "latest",
+    "node-cron": "latest"
   }
 }
