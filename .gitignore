@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Command-PM Slack agent (separate Node app)
+agent/.env
+agent/node_modules/
