@@ -1,9 +1,11 @@
 import dotenv from 'dotenv'
 dotenv.config()
 
-import Anthropic from '@anthropic-ai/sdk'
+const MOONSHOT_API_KEY = process.env.MOONSHOT_API_KEY
+const MOONSHOT_API_URL = 'https://api.moonshot.cn/v1/chat/completions'
 
-const SYSTEM_PROMPT = `You are Command-PM, an AI project manager for Spence — a filmmaker 
+const systemPrompt = `
+You are Command-PM, an AI project manager for Spence — a filmmaker 
 and entrepreneur running multiple ventures simultaneously:
 - Christian App Empire (16+ faith-based iOS/Android apps)
 - CryptoDraftPicks (crypto fantasy sports platform)
@@ -17,7 +19,8 @@ Your job is to read Spence's messages and:
 2. Determine which project each item belongs to
 3. Return a structured JSON response with the actions to take
 
-You must ALWAYS respond with valid JSON only. No preamble, no markdown, no explanation outside the JSON.
+You must ALWAYS respond with valid JSON only. No preamble, no markdown, 
+no explanation outside the JSON.
 
 Response format:
 {
@@ -71,10 +74,10 @@ Response format:
 }
 
 PRIORITY RULES:
-- Words like 'urgent', 'asap', 'blocking', 'need now', 'today' → urgent
-- Words like 'important', 'soon', 'this week' → high
+- Words like urgent, asap, blocking, need now, today → urgent
+- Words like important, soon, this week → high
 - Default → normal
-- Words like 'eventually', 'someday', 'when I get to it' → low
+- Words like eventually, someday, when I get to it → low
 
 BUCKET RULES:
 - Action needed before next phase → now
@@ -83,71 +86,110 @@ BUCKET RULES:
 - Speculative or low stakes → someday
 
 PROJECT MATCHING:
-Match project names loosely — 'crypto' = CryptoDraftPicks, 
-'crew' = CrewSheetz, 'dead or alive' or 'the western' = Dead or Alive,
-'stat' = StatFlow, 'empire' or 'apps' or 'CAE' = Christian App Empire,
-'to fame' or 'anthology' = To Fame From Love
+Match project names loosely — crypto = CryptoDraftPicks, 
+crew = CrewSheetz, dead or alive or the western = Dead or Alive,
+stat = StatFlow, empire or apps or CAE = Christian App Empire,
+to fame or anthology = To Fame From Love
 
 If the message is a question about project status, set type to 
-'status_check' and do not create tasks.
+status_check and do not create tasks.
 
 If the message is casual conversation with no project action, 
-set type to 'none' and reply conversationally but always sign 
-off as Command-PM.`
+set type to none and reply conversationally but always sign 
+off as Command-PM.
+`
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
-
-function extractText(blocks) {
-  if (!blocks || !Array.isArray(blocks)) return ''
-  return blocks
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text)
-    .join('')
-    .trim()
+function normalizeParsed(parsed) {
+  if (!parsed || typeof parsed !== 'object') return null
+  if (!Array.isArray(parsed.actions)) parsed.actions = []
+  if (typeof parsed.slackReply !== 'string') parsed.slackReply = 'Processed your message.'
+  return parsed
 }
 
-function parseJsonFromModel(text) {
-  const trimmed = text.trim()
-  const start = trimmed.indexOf('{')
-  const end = trimmed.lastIndexOf('}')
-  const slice = start >= 0 && end > start ? trimmed.slice(start, end + 1) : trimmed
-  return JSON.parse(slice)
+function parseJsonContent(content) {
+  const trimmed = String(content || '').trim()
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    const start = trimmed.indexOf('{')
+    const end = trimmed.lastIndexOf('}')
+    if (start >= 0 && end > start) {
+      return JSON.parse(trimmed.slice(start, end + 1))
+    }
+    throw new Error('Invalid JSON in model content')
+  }
 }
 
 export async function analyzeMessage(userMessage, projects) {
-  const userContent = `Here is my message: ${userMessage}
-
-Current projects context: ${JSON.stringify(projects)}`
-
-  try {
-    const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userContent }],
-    })
-
-    const text = extractText(msg.content)
-    const parsed = parseJsonFromModel(text)
-
-    if (!parsed || typeof parsed !== 'object') {
-      throw new Error('Model returned non-object JSON')
-    }
-
-    if (!Array.isArray(parsed.actions)) parsed.actions = []
-    if (typeof parsed.slackReply !== 'string') parsed.slackReply = 'Processed your message.'
-
-    return parsed
-  } catch (err) {
-    console.error('[Command-PM] analyzeMessage parse/model error:', err)
+  if (!MOONSHOT_API_KEY) {
+    console.error('[Command-PM ERROR] Missing MOONSHOT_API_KEY')
     return {
       understood: '',
       project: null,
-      actions: [{ type: 'none', reason: 'JSON parse or model error' }],
+      actions: [{ type: 'none', reason: 'Missing MOONSHOT_API_KEY' }],
       slackReply:
-        'I could not parse the model response cleanly. Nothing was written to the database. Please try rephrasing or try again in a moment.\n\n— Command-PM',
+        'Command-PM is not configured with MOONSHOT_API_KEY. Add it to agent/.env and restart.\n\n— Command-PM',
+    }
+  }
+
+  try {
+    const response = await fetch(MOONSHOT_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${MOONSHOT_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'moonshot-v1-8k',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: `Here is my message: ${userMessage}\n\nCurrent projects context: ${JSON.stringify(projects)}`,
+          },
+        ],
+        temperature: 0.3,
+        response_format: { type: 'json_object' },
+      }),
+    })
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Moonshot API error: ${response.status} — ${error}`)
+    }
+
+    const data = await response.json()
+    const content = data?.choices?.[0]?.message?.content
+    if (content == null) {
+      throw new Error('Moonshot response missing choices[0].message.content')
+    }
+
+    try {
+      const parsed = parseJsonContent(content)
+      const normalized = normalizeParsed(parsed)
+      if (!normalized) throw new Error('Model returned non-object JSON')
+      return normalized
+    } catch (parseError) {
+      console.error('[Command-PM] JSON parse failed:', content, parseError)
+      return {
+        understood: 'Could not parse response',
+        project: null,
+        actions: [{ type: 'none', reason: 'JSON parse error' }],
+        slackReply:
+          'Command-PM had trouble reading that. Try rephrasing or check the logs.\n\n— Command-PM',
+      }
+    }
+  } catch (error) {
+    console.error('[Command-PM ERROR] Moonshot call failed:', error)
+    return {
+      understood: 'API call failed',
+      project: null,
+      actions: [{ type: 'none', reason: error.message }],
+      slackReply:
+        'Command-PM could not reach the AI service. Check your MOONSHOT_API_KEY and try again.\n\n— Command-PM',
     }
   }
 }
